@@ -3,6 +3,10 @@
 require_once(dirname(__FILE__) . '/Plisio/PlisioClient.php');
 require_once(dirname(__FILE__) . '/Plisio/version.php');
 
+if (!defined("WHMCS")) {
+    die("This file cannot be accessed directly");
+}
+
 function plisio_config()
 {
     $client = new PlisioClient('');
@@ -35,11 +39,12 @@ function plisio_config()
 function plisio_createOrder($currency, $params)
 {
     $client = new PlisioClient($params['ApiAuthToken']);
-    if (substr($params['systemurl'], -1) != "/") {
-        $returnlink = $params['systemurl'] . "/";
-    } else {
-        $returnlink = $params['systemurl'];
-    }
+    $returnLink = trim($params['systemurl'], "/");
+
+//    if (empty($returnLink)) {
+//        $returnLink = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+//        $returnLink .= $_SERVER['HTTP_HOST'];
+//    }
 
     $data = array(
         'currency' => $currency,
@@ -47,14 +52,15 @@ function plisio_createOrder($currency, $params)
         'order_number' => $params['invoiceid'],
         'description' => $params['description'],
         'source_amount' => number_format($params['amount'], 8, '.', ''),
-        'source_currency'  => $params['currency'],
-        'cancel_url' => $returnlink . 'clientarea.php',
-        'callback_url' => $returnlink . 'modules/gateways/callback/plisio.php',
-        'success_url' => $returnlink . 'viewinvoice.php?id=' . $params['invoiceid'],
+        'source_currency' => $params['currency'],
+        'cancel_url' => $returnLink . '/clientarea.php',
+        'callback_url' => $returnLink . '/modules/gateways/callback/plisio.php',
+        'success_url' => $returnLink . '/viewinvoice.php?id=' . $params['invoiceid'],
         'email' => $params['clientdetails']['email'],
         'language' => 'en',
-        'plugin' => 'opencart',
-        'version' => PLISIO_WHMCS_VERSION
+        'plugin' => 'whmcs',
+        'version' => PLISIO_WHMCS_VERSION,
+        'whmcs_version' => $params['whmcsVersion'],
     );
     $response = $client->createTransaction($data);
 
@@ -87,7 +93,7 @@ function plisio_link($params)
             $form .= '<input type="hidden" name="api_key" value="' . $params['ApiAuthToken'] . '" />';
             $form .= '<select name="currency" class="form-control select-inline">';
             foreach ($currenciesResponse['data'] as $item) {
-                $form .= '<option value="' . $item['cid'] . '">' . $item['name']. ' (' . $item['currency'] . ')' . '</option>';
+                $form .= '<option value="' . $item['cid'] . '">' . $item['name'] . ' (' . $item['currency'] . ')' . '</option>';
             }
             $form .= '</select>&nbsp;';
             $form .= '<input type="submit" name="sbmt" value="' . $params['langpaynow'] . '" />';

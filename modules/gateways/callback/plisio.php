@@ -40,31 +40,31 @@ if (verifyCallbackData($_POST, $GATEWAY['ApiAuthToken'])) {
         case 'completed':
         case 'mismatch':
             addInvoicePayment($invoice_id, $trans_id, $amount, $fee, $gatewaymodule);
-            logTransaction($GATEWAY['name'], $response, 'Payment is confirmed by the network, and has been credited to the merchant. Purchased goods/services can be securely delivered to the buyer. ' . $_POST['comment']);
+            logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. Payment is confirmed by the network, and has been credited to the merchant. Purchased goods/services can be securely delivered to the buyer. ' . $_POST['comment']);
             break;
         case 'new':
-            logTransaction($GATEWAY['name'], $response, 'Buyer selected payment currency. Awaiting payment.');
+            logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. Buyer selected ' . (isset($_POST['psys_cid']) ? $_POST['psys_cid'] : '') . ' cryptocurrency. Awaiting payment.');
             break;
         case 'pending':
-            logTransaction($GATEWAY['name'], $response, 'Buyer transferred the payment for the invoice. Awaiting blockchain network confirmation.');
+            logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. Buyer transferred the payment for the invoice. Awaiting blockchain network confirmation.');
             break;
         case 'expired':
             if ($amount > 0){
-                addInvoicePayment($invoice_id, $trans_id, $amount, 0, $gatewaymodule);
-                logTransaction($GATEWAY['name'], $response, $_POST['comment']);
+                addInvoicePayment($invoice_id, $trans_id, $amount, $fee, $gatewaymodule);
+                logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. ' . $_POST['comment']);
             } else {
-                logTransaction($GATEWAY['name'], $response, 'Buyer did not pay within the required time and the invoice expired.');
+                logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. Buyer did not pay within the required time and the invoice expired.');
             }
             break;
         case 'error':
-            logTransaction($GATEWAY['name'], $response, 'Payment rejected by the network or did not confirm.');
+            logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. Payment rejected by the network or did not confirm.');
             break;
 //    case 'refunded':
 //        logTransaction($GATEWAY['name'], $response, 'Payment was refunded to the buyer.');
 //        break;
     }
 } else {
-    logTransaction($GATEWAY['name'], $response, 'Callback data looks compromised');
+    logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. Callback data looks compromised. Invoice update failed.');
 }
 
 function verifyCallbackData($post, $apiKey)
@@ -76,6 +76,12 @@ function verifyCallbackData($post, $apiKey)
     $verifyHash = $post['verify_hash'];
     unset($post['verify_hash']);
     ksort($post);
+    if (isset($post['expire_utc'])){
+        $post['expire_utc'] = (string)$post['expire_utc'];
+    }
+    if (isset($post['tx_urls'])){
+        $post['tx_urls'] = html_entity_decode($post['tx_urls']);
+    }
     $postString = serialize($post);
     $checkKey = hash_hmac('sha1', $postString, $apiKey);
     if ($checkKey != $verifyHash) {
