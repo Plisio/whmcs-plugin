@@ -1,2 +1,2 @@
 <?php
-define('PLISIO_WHMCS_VERSION', '0.0.3');
+define('PLISIO_WHMCS_VERSION', '0.0.4');

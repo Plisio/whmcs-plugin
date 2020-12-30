@@ -31,8 +31,8 @@ $trans_id = $_POST['txn_id'];
 
 checkCbTransID($trans_id);
 
-$fee = 0;
-$amount = $_POST['source_amount'];
+$fee = "";
+$amount = "";
 
 $response = json_encode($_POST);
 if (verifyCallbackData($_POST, $GATEWAY['ApiAuthToken'])) {
@@ -50,8 +50,7 @@ if (verifyCallbackData($_POST, $GATEWAY['ApiAuthToken'])) {
             break;
         case 'expired':
             if ($amount > 0){
-                addInvoicePayment($invoice_id, $trans_id, $amount, $fee, $gatewaymodule);
-                logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. ' . $_POST['comment']);
+                logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. ' . $_POST['comment'] . 'Buyer did not paid the full amount');
             } else {
                 logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. Buyer did not pay within the required time and the invoice expired.');
             }
@@ -59,9 +58,8 @@ if (verifyCallbackData($_POST, $GATEWAY['ApiAuthToken'])) {
         case 'error':
             logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. Payment rejected by the network or did not confirm.');
             break;
-//    case 'refunded':
-//        logTransaction($GATEWAY['name'], $response, 'Payment was refunded to the buyer.');
-//        break;
+        case 'cancelled':
+            logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. No payment received within 10 hours.');
     }
 } else {
     logTransaction($GATEWAY['name'], $response, 'Invoice #' . $invoice_id . '. Callback data looks compromised. Invoice update failed.');
