@@ -81,26 +81,26 @@ function plisio_link($params)
     if (false === isset($params) || true === empty($params)) {
         die('[ERROR] In modules/gateways/plisio.php::plisio_link() function: Missing $params data.');
     }
-
-    if (!isset($params['Cryptocurrency']) || empty($params['Cryptocurrency'])) {
-        if (isset($_POST) && !empty($_POST) && isset($_POST['currency'])) {
-            return plisio_createOrder($_POST['currency'], $params);
-        } else {
-            $client = new PlisioClient('');
-            $currenciesResponse = $client->getCurrencies();
-
-            $form = '<form method="POST">';
-            $form .= '<input type="hidden" name="api_key" value="' . $params['ApiAuthToken'] . '" />';
-            $form .= '<select name="currency" class="form-control select-inline">';
-            foreach ($currenciesResponse['data'] as $item) {
-                $form .= '<option value="' . $item['cid'] . '">' . $item['name'] . ' (' . $item['currency'] . ')' . '</option>';
-            }
-            $form .= '</select>&nbsp;';
-            $form .= '<input type="submit" name="sbmt" value="' . $params['langpaynow'] . '" />';
-            $form .= '</form>';
-            return $form;
-        }
+    if (isset($_POST) && !empty($_POST) && isset($_POST['currency'])) {
+        return plisio_createOrder($_POST['currency'], $params);
     } else {
-        return plisio_createOrder($params['Cryptocurrency'], $params);
+        $client = new PlisioClient('');
+        $currenciesResponse = $client->getCurrencies();
+        $form = '<form method="POST">';
+        $form .= '<input type="hidden" name="api_key" value="' . $params['ApiAuthToken'] . '" />';
+        $form .= '<select name="currency" class="form-control select-inline">';
+        foreach ($currenciesResponse['data'] as $item) {
+            if (!isset($params['Cryptocurrency']) || empty($params['Cryptocurrency'])) {
+                $form .= '<option value="' . $item['cid'] . '">' . $item['name'] . ' (' . $item['currency'] . ')' . '</option>';
+            } else {
+                if ($item['currency'] == $params['Cryptocurrency']) {
+                    $form .= '<option value="' . $item['cid'] . '">' . $item['name'] . ' (' . $item['currency'] . ')' . '</option>';
+                }
+            }
+        }
+        $form .= '</select>&nbsp;';
+        $form .= '<input type="submit" name="sbmt" value="' . $params['langpaynow'] . '" />';
+        $form .= '</form>';
+        return $form;
     }
 }
