@@ -10,12 +10,6 @@ if (!defined("WHMCS")) {
 function plisio_config()
 {
     $client = new PlisioClient('');
-    $currenciesResponse = $client->getCurrencies();
-    $cryptos = [];
-    $cryptos[''] = 'Any';
-    foreach ($currenciesResponse['data'] as $item) {
-        $cryptos[$item['cid']] = $item['name'] . ' (' . $item['currency'] . ')';
-    }
     return array(
         'FriendlyName' => array(
             'Type' => 'System',
@@ -25,29 +19,29 @@ function plisio_config()
             'FriendlyName' => 'API Auth Token',
             'Description' => 'API Auth Token from Plisio API',
             'Type' => 'text',
-        ),
-        'Cryptocurrency' => array(
-            'FriendlyName' => 'Cryptocurrency',
-            'Type' => 'dropdown',
-            'Default' => '',
-            'Description' => 'Allow pay order in one or "Any" supported cryptocurrency',
-            'Options' => $cryptos,
         )
     );
 }
 
-function plisio_createOrder($currency, $params)
+function get_plisio_receive_currencies ($source_currency, $api_key) {
+    $client = new PlisioClient($api_key);
+    $currencies = $client->getCurrencies($source_currency);
+    return array_reduce($currencies, function ($acc, $curr) {
+        $acc[$curr['cid']] = $curr;
+        return $acc;
+    }, []);
+}
+
+function plisio_createOrder($params)
 {
     $client = new PlisioClient($params['ApiAuthToken']);
     $returnLink = trim($params['systemurl'], "/");
 
-//    if (empty($returnLink)) {
-//        $returnLink = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-//        $returnLink .= $_SERVER['HTTP_HOST'];
-//    }
+    $plisio_receive_currencies = get_plisio_receive_currencies($params['currency'], $params['ApiAuthToken']);
+    $plisio_receive_cids = array_keys($plisio_receive_currencies);
 
     $data = array(
-        'currency' => $currency,
+        'currency' => $plisio_receive_cids[0],
         'order_name' => $params['companyname'] . ' Order #' . $params['invoiceid'],
         'order_number' => $params['invoiceid'],
         'description' => $params['description'],
@@ -61,6 +55,7 @@ function plisio_createOrder($currency, $params)
         'plugin' => 'whmcs',
         'version' => PLISIO_WHMCS_VERSION,
         'whmcs_version' => $params['whmcsVersion'],
+        'return_existing' => true
     );
     $response = $client->createTransaction($data);
 
@@ -70,8 +65,7 @@ function plisio_createOrder($currency, $params)
         return '';
 
     } else {
-        $form = '<h2>' . $response['data']['message'] . '</h2>';
-        $form .= '<h3>Please contact merchant for further details</h3>';
+        $form = '<h2>' . json_decode($response['data']['message'], true)['amount'] . '</h2>';
         return $form;
     }
 }
@@ -81,24 +75,10 @@ function plisio_link($params)
     if (false === isset($params) || true === empty($params)) {
         die('[ERROR] In modules/gateways/plisio.php::plisio_link() function: Missing $params data.');
     }
-    if (isset($_POST) && !empty($_POST) && isset($_POST['currency'])) {
-        return plisio_createOrder($_POST['currency'], $params);
+    if ((isset($_POST) && !empty($_POST) && isset($_POST['sbmt'])) or $_GET['a'] == 'complete') {
+        return plisio_createOrder($params);
     } else {
-        $client = new PlisioClient('');
-        $currenciesResponse = $client->getCurrencies();
         $form = '<form method="POST">';
-        $form .= '<input type="hidden" name="api_key" value="' . $params['ApiAuthToken'] . '" />';
-        $form .= '<select name="currency" class="form-control select-inline">';
-        foreach ($currenciesResponse['data'] as $item) {
-            if (!isset($params['Cryptocurrency']) || empty($params['Cryptocurrency'])) {
-                $form .= '<option value="' . $item['cid'] . '">' . $item['name'] . ' (' . $item['currency'] . ')' . '</option>';
-            } else {
-                if ($item['currency'] == $params['Cryptocurrency']) {
-                    $form .= '<option value="' . $item['cid'] . '">' . $item['name'] . ' (' . $item['currency'] . ')' . '</option>';
-                }
-            }
-        }
-        $form .= '</select>&nbsp;';
         $form .= '<input type="submit" name="sbmt" value="' . $params['langpaynow'] . '" />';
         $form .= '</form>';
         return $form;
