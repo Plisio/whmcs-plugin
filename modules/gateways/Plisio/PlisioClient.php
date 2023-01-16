@@ -21,6 +21,11 @@ class PlisioClient
         return $this->apiCall('balances', array('currency' => $currency));
     }
 
+    public function getShopInfo()
+    {
+        return $this->apiCall('shops');
+    }
+
     public function getCurrencies($source_currency = 'USD')
     {
         $currencies = $this->guestApiCall("currencies/$source_currency");

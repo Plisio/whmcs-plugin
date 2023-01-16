@@ -24,9 +24,6 @@ $order_id = $_POST['order_number'];
 
 $invoice_id = checkCbInvoiceID($order_id, $GATEWAY['plisio']);
 
-if (!$invoice_id)
-    throw new Exception('Order #' . $order_id . ' does not exists');
-
 $trans_id = $_POST['txn_id'];
 
 checkCbTransID($trans_id);
